@@ -1,7 +1,9 @@
 // Объявление констант
 const IMG_URL = 'https://image.tmdb.org/t/p/w185_and_h278_bestv2'; // базовый url для изображений
 const SERVER = 'https://api.themoviedb.org'; //
-//const API_KEY3 = 'enter your API-key';
+
+const API_KEY3 = '4e61d32c7f8095da04f6550d8cc3dd94';
+
 const leftMenu = document.querySelector('.left-menu'); // блок левого меню
 const hamburger = document.querySelector('.hamburger'); // кнопка меню
 const tvShowList = document.querySelector('.tv-shows__list'); // контейнер списка элементов (карточек фильмов)
@@ -15,6 +17,10 @@ const genresList = document.querySelector('.genres-list'); // жанр филь�
 const modalLink = document.querySelector('.modal__link'); // ссылка на страницу фильма в модальном окне
 const searchForm = document.querySelector('.search__form'); // форма ввода
 const searchFormInput = document.querySelector('.search__form-input'); // поле ввода в форме поиска
+const preloader = document.querySelector('.preloader'); // прелоадер
+const dropdown = document.querySelectorAll('.dropdown'); // раскрытые списки меню
+const tvShowsHead = document.querySelector('.tv-shows__head'); // раскрытые списки меню
+const tvShowsHead = document.querySelector('poster__wrapper'); // постер в модальном окне
 
 const loading = document.createElement('div'); // создаем элемент лоадера
 loading.className = 'loading';
@@ -55,6 +61,14 @@ const renderCard = (response) => {
     //console.log(response.results); // вывод списка данных в консоль браузера
 
     tvShowList.textContent = ''; // очищаем список фильмов
+
+    if(!response.total_results) {
+        loading.remove(); // удаление лоадера после получения данных и рендера карточек фильмов
+        tvShowsHead.textContent = 'Поиск не дал результатов! Измените запрос и повторите снова.';
+        console.log(response.total_results);
+        return;
+    }
+    tvShowsHead.textContent = 'Результат поиска';
 
     // Получаем список фильмов из файла json
     response.results.forEach((item) => {
@@ -113,22 +127,31 @@ searchForm.addEventListener('submit', (e) => {
     searchFormInput.value = ''; //очистка поля формы поиска
 });
 
-// Функция обработки клика по кнопке меню (открывает меню)
+// Функция сворачивания списков в меню
+closeDpordown = () => {
+    dropdown.forEach((item) => {
+        item.classList.remove('active');
+    })
+}
+
+// Функция обработки клика по кнопке меню (открывает/закрывает меню)
 hamburger.addEventListener('click', () => {
     leftMenu.classList.toggle('openMenu');
     hamburger.classList.toggle('open');
+    closeDpordown();
 });
 
-// Функция обработки клика по содержимому меню, например, иконкам разделов (открывает меню)
+// Функция обработки клика по содержимому меню, например, иконкам разделов (открывает/закрывает меню)
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.left-menu')) {
         //alert('вне меню ');
         leftMenu.classList.remove('openMenu');
         hamburger.classList.remove('open');
+        closeDpordown();
     }
 })
 
-// Функция обработки клика на меню
+// Функция обработки клика на списке в меню
 leftMenu.addEventListener('click', (e) => {
     event.preventDefault();
     const target = e.target;
@@ -146,7 +169,9 @@ tvShowList.addEventListener('click', (e) => {
     const card = target.closest('.tv-card');
     const id = target.dataset.id;
 
-    // включить прелоадер
+    if (card) {
+
+        preloader.style.display = 'block'; // включаем прелоадер
 
     new DBService()
         .getTV(id)
@@ -162,13 +187,12 @@ tvShowList.addEventListener('click', (e) => {
             rating.textContent = res.vote_average;
             description.textContent = res.overview;
             modalLink.href = res.homepage;
-        });
-
-        // .then() убрать прелоадер
-
-    if (card) {
-        document.body.style.overflow = 'hidden';
-        modal.classList.remove('hide');
+        })
+        .then(() => {
+            document.body.style.overflow = 'hidden';
+            modal.classList.remove('hide');
+        })
+        .then(() => preloader.style.display = 'none'); // убрать прелоадер
     }
 
 });
