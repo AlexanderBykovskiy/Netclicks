@@ -1,8 +1,8 @@
 // Объявление констант
 const IMG_URL = 'https://image.tmdb.org/t/p/w185_and_h278_bestv2'; // базовый url для изображений
-const SERVER = 'https://api.themoviedb.org'; //
+const SERVER = 'https://api.themoviedb.org'; // базовый адрес api
 
-const API_KEY3 = '4e61d32c7f8095da04f6550d8cc3dd94';
+//const API_KEY3 = '4e61d32c7f8095da04f6550d8cc3dd94';
 
 const leftMenu = document.querySelector('.left-menu'); // блок левого меню
 const hamburger = document.querySelector('.hamburger'); // кнопка меню
@@ -20,7 +20,11 @@ const searchFormInput = document.querySelector('.search__form-input'); // пол
 const preloader = document.querySelector('.preloader'); // прелоадер
 const dropdown = document.querySelectorAll('.dropdown'); // раскрытые списки меню
 const tvShowsHead = document.querySelector('.tv-shows__head'); // раскрытые списки меню
-const tvShowsHead = document.querySelector('poster__wrapper'); // постер в модальном окне
+const posterWrapper = document.querySelector('.poster__wrapper'); // постер в модальном окне
+const modalContent = document.querySelector('.modal__content'); // блок содержащий контент модального окна
+const pagination = document.querySelector('.pagination'); // пгинатор
+let tempURL = '';
+
 
 const loading = document.createElement('div'); // создаем элемент лоадера
 loading.className = 'loading';
@@ -28,6 +32,7 @@ loading.className = 'loading';
 // Класс получения данных из файла json
 const DBService = class {
     getData = async (url) => {
+        tvShows.append(loading);
         const res = await fetch(url);
         if (res.ok) {
             return res.json();
@@ -36,27 +41,53 @@ const DBService = class {
             throw new Error('Не удалось получить данные');
         }
     }
-    // Метод получения тестовых данных
+    // Метод получения тестовых данных из файла
     getTestData = async () => {
         return await this.getData('test.json');
     }
-    // Метод получения тестовых данных конкретной карты
+    // Метод получения тестовых данных конкретной карты из файла
     getTestCard = async () => {
         return await this.getData('card.json');
     }
     // Метод получения данных из поиска с сервера
     getSearchResult = async (query) => {
-        return this.getData(`${ SERVER }/3/search/tv?api_key=${ API_KEY3 }&query=${ query }&language=ru-RU`);
+        tempURL = `${ SERVER }/3/search/tv?api_key=${ API_KEY3 }&query=${ query }&language=ru-RU`;
+        return this.getData(tempURL);
+    }
+    // Метод получения данных по конкретной странице
+    getNextPage  = async (page) => {
+        return this.getData(tempURL + '&page=' + page);
     }
     // Метод получения данных конкретного фильма с сервера
     getTV = async (id) => {
         return this.getData(`${ SERVER }/3/tv/${ id }?api_key=${ API_KEY3 }&language=ru-RU`);
     }
+    // Метод получения новинок за сегодня
+    getToday = async () => {
+        tempURL = `${ SERVER }/3/tv/airing_today?api_key=${ API_KEY3 }&language=ru-RU`;
+        return this.getData(tempURL);
+    }
+    // Метод получения новинок за неделю
+    getWeek = async () => {
+        tempURL = `${ SERVER }/3/tv/on_the_air?api_key=${ API_KEY3 }&language=ru-RU`;
+        return this.getData(tempURL);
+    }
+    // Метод получения топ сериалов
+    getTopRated = async () => {
+        tempURL = `${ SERVER }/3/tv/top_rated?api_key=${ API_KEY3 }&language=ru-RU`;
+        return this.getData(tempURL);
+    }
+    // Метод получения популярных
+    getPopular = async () => {
+        tempURL = `${ SERVER }/3/tv/popular?api_key=${ API_KEY3 }&language=ru-RU`;
+        return this.getData(tempURL);
+    }
 }
 
+const myDBService = new DBService();
 
 // Функция рендеринга элементов списка фильмов
-const renderCard = (response) => {
+const renderCard = (response, target) => {
 
     //console.log(response.results); // вывод списка данных в консоль браузера
 
@@ -65,10 +96,13 @@ const renderCard = (response) => {
     if(!response.total_results) {
         loading.remove(); // удаление лоадера после получения данных и рендера карточек фильмов
         tvShowsHead.textContent = 'Поиск не дал результатов! Измените запрос и повторите снова.';
-        console.log(response.total_results);
+        pagination.textContent = '';
+        //console.log(response.total_results);
         return;
     }
-    tvShowsHead.textContent = 'Результат поиска';
+
+    //tvShowsHead.textContent = 'Результат поиска';
+    tvShowsHead.textContent = target ? target.textContent : 'Результат поиска';
 
     // Получаем список фильмов из файла json
     response.results.forEach((item) => {
@@ -101,14 +135,23 @@ const renderCard = (response) => {
         tvShowList.append(card); // добавление списка элементов
 
     })
+
+    //console.log(response.total_pages);
+    pagination.textContent = '';
+    if (response.total_pages > 1) {
+        for (let i = 1; i <= response.total_pages; i++) {
+            pagination.innerHTML += `<li><a href="#" class="page-link">${ i }</a></li>`;
+        }
+    }
 };
 
 // Тест получения данных при запросе на сервер
-//console.log(new DBService().getSearchResult('няня'));
+//console.log(myDBService().getSearchResult('няня'));
 
 {
     tvShows.append(loading); // вывод лоадера перед окончанием загрузки данных
-    new DBService().getTestData().then(renderCard); // создаем экземпляр класса получения данных из файла json
+    //myDBService.getTestData().then(renderCard); // получения данных из файла json
+    myDBService.getToday().then(renderCard); // получение и вывод данных по умолчанию - за сегодня
 }
 
 // Отправка формы поиска на сервер
@@ -118,7 +161,7 @@ searchForm.addEventListener('submit', (e) => {
 
     if (value) {
         tvShowList.textContent = ''; // очищаем список фильмов
-        new DBService().getSearchResult(value).then(renderCard);
+        myDBService.getSearchResult(value).then(renderCard);
     }
     else {
         console.log('Пустое поле ввода');
@@ -161,6 +204,23 @@ leftMenu.addEventListener('click', (e) => {
         leftMenu.classList.add('openMenu');
         hamburger.classList.add('open');
     }
+    if (target.closest('#top-rated')) {
+        myDBService.getTopRated().then((response) => renderCard(response, target));
+    }
+    if (target.closest('#popular')) {
+        myDBService.getPopular().then((response) => renderCard(response, target));
+    }
+    if (target.closest('#week')) {
+        myDBService.getWeek().then((response) => renderCard(response, target));
+    }
+    if (target.closest('#today')) {
+        myDBService.getToday().then((response) => renderCard(response, target));
+    }
+    if (target.closest('#search')) {
+        tvShowList.textContent = '';
+        tvShowsHead.textContent ='';
+        pagination.textContent = '';
+    }
 });
 
 // Функция обработки клика по карточке (открыттие модального окна)
@@ -173,26 +233,35 @@ tvShowList.addEventListener('click', (e) => {
 
         preloader.style.display = 'block'; // включаем прелоадер
 
-    new DBService()
-        .getTV(id)
-        .then((res) => {
-            //console.log(res); // получаем резальтат запроса
-            // Заполняем поля модального окна
-            tvCardImg.src = IMG_URL + res.poster_path;
-            modalTitle.textContent = res.name;
-            genresList.textContent = '';
-            for(const item of res.genres) {
-                genresList.innerHTML += `<li>${ item.name }</li>`;
-            }
-            rating.textContent = res.vote_average;
-            description.textContent = res.overview;
-            modalLink.href = res.homepage;
-        })
-        .then(() => {
-            document.body.style.overflow = 'hidden';
-            modal.classList.remove('hide');
-        })
-        .then(() => preloader.style.display = 'none'); // убрать прелоадер
+        myDBService
+            .getTV(id)
+            .then((res) => {
+                //console.log(res); // получаем резальтат запроса
+                // Заполняем поля модального окна
+                if (res.poster_path) {
+                    tvCardImg.src = IMG_URL + res.poster_path;
+                    tvCardImg.alt = res.name;
+                    posterWrapper.style.display = 'block';
+                    modalContent.style.paddingLeft = '150px';
+                }
+                else {
+                    posterWrapper.style.display = 'none';
+                    modalContent.style.paddingLeft = '35px';
+                }
+                modalTitle.textContent = res.name;
+                genresList.textContent = '';
+                for(const item of res.genres) {
+                    genresList.innerHTML += `<li>${ item.name }</li>`;
+                }
+                rating.textContent = res.vote_average;
+                description.textContent = res.overview;
+                modalLink.href = res.homepage;
+            })
+            .then(() => {
+                document.body.style.overflow = 'hidden';
+                modal.classList.remove('hide');
+            })
+            .then(() => preloader.style.display = 'none'); // убрать прелоадер
     }
 
 });
@@ -202,6 +271,7 @@ modal.addEventListener('click', (e) => {
     if (e.target.closest('.cross') || e.target.classList.contains('modal')) {
         document.body.style.overflow = '';
         modal.classList.add('hide');
+        loading.remove();
     }
 });
 
@@ -221,3 +291,13 @@ const changeImage = (e) => {
 // Функции обработки наведения указателя мыши на карточку фильма (вызывает функцию замены изображения)
 tvShowList.addEventListener('mouseover', changeImage);
 tvShowList.addEventListener('mouseout', changeImage);
+
+// Функция обработки клика по кнопкам пагинации
+pagination.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = e.target;
+    if(target.classList.contains('page-link')) {
+        tvShows.append(loading);
+        myDBService.getNextPage(target.textContent).then(renderCard);
+    }
+});

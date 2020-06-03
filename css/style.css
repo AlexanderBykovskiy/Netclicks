@@ -1195,3 +1195,20 @@ div:after {
         background-color: #00838f;
     }
 }
+
+.pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 40px;
+}
+.pagination > li {
+    display: block;
+    padding: 3px;
+}
+.pagination > li > a {
+    display: block;
+    border-radius: 3px;
+    border: 1px solid #9aa;
+    padding: 0.5rem 1rem;
+}
